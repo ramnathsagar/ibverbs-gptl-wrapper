@@ -54,56 +54,95 @@ static void finalize_tracing()
 	//printf("Finalized\n");
 }
 
-void load_driver(char *dname) {
-
+static void  getsymbols(char *so_name) {
+	
 	void *dldriver;
-	char *device = malloc(7*sizeof(char));
-	char *so_name;
 
-	//If its a Emulex based RoCE solution
-	if ( strstr ( dname, "ocrdma" ) ) {
-		so_name = "/usr/local/lib/libocrdma.so";
-		dldriver = dlopen(so_name, RTLD_NOW);
-		//dldriver = dlopen("/usr/local/lib/libocrdma-rdmav2.so", RTLD_NOW);
+	dldriver = dlopen(so_name, RTLD_NOW);
 
-		if (!dldriver) {
-			fprintf(stderr, "Warning: couldn't load driver from /usr/lib64/%s\n",device);
-			exit(0);
-		}
+	if (!dldriver) fprintf ( stderr, "Warning: Couldn't load driver from %s\n", so_name);
+
+	if ( strstr ( so_name  , "mlx") ) {
+		real_mlx4_post_send = dlsym(dldriver,"mlx4_post_send");
+		real_mlx4_post_send = dlsym(dldriver,"mlx4_post_send");
+		real_mlx4_post_recv = dlsym(dldriver,"mlx4_post_recv");
+		real_mlx4_arm_cq = dlsym(dldriver, "mlx4_ib_arm_cq");
+		
+		fprintf(stdout, "address of send=%p recv=%p poll=%p arm_cq=%p\n",real_mlx4_post_send,real_mlx4_post_recv,real_mlx4_poll_cq,real_mlx4_arm_cq);
+	}
+	else if ( strstr ( so_name, "ocrdma") ) {
+		real_ocrdma_post_send = dlsym(dldriver,"ocrdma_post_send");
 		real_ocrdma_post_send = dlsym(dldriver,"ocrdma_post_send");
 		real_ocrdma_post_recv = dlsym(dldriver,"ocrdma_post_recv");
 		real_ocrdma_poll_cq   = dlsym(dldriver,"ocrdma_poll_cq");
-		real_ocrdma_arm_cq    = dlsym(dldriver,"ocrdma_arm_cq");
-		printf("address of send=%p recv=%p poll=%p arm_cq=%p\n",real_ocrdma_post_send,real_ocrdma_post_recv,real_ocrdma_poll_cq,real_ocrdma_arm_cq);
 
+		fprintf(stdout, "address of send=%p recv=%p poll=%p arm_cq=%p\n",real_ocrdma_post_send,real_ocrdma_post_recv,real_ocrdma_poll_cq,real_ocrdma_arm_cq);
 	}
+	else {
+		//Do nothing..
+	}
+}
+
+
+static char *getpath(char *buffer) {
+	
+	char *iterator;
+
+	char *path = (char *)malloc(4096*sizeof(char));
+	int i = 0;
+
+	//First we need to jump to the begining of the first path found from LD_LIBRARY_PATH
+	iterator = strstr(buffer, ": ");
+
+	//What if there is no shared library found
+	if ( iterator == NULL ) {
+		fprintf(stdout,"Warning: Shared library not found.. Are you sure its in LD_LIBRARY_PATH ?");
+		return NULL;
+	}
+
+	//Iterator now points to : /path/to/shared/library
+	//						 ^
+	//We ned to jump two positions to reach /path...
+	//										^
+	iterator += 2;
+
+	//Lets move character by character until we reach end of the first path found
+	while ( iterator[i] != ' ' && iterator[i] != '\n' ) {
+		path[i] = iterator[i];
+		i++;
+	}
+	//We need to make sure that this path string is delimited
+	path[i]='\0';
+
+	return path;
+
+}
+
+static void load_driver(char *dname) {
+	
+	FILE *cmd_output;
+	char buffer[1024];
+
+	//If its a Emulex based RoCE solution
+	if ( strstr ( dname, "ocrdma" ) ) 
+		cmd_output = popen("whereis libocrdma", "r");
+
 	//If its a Mellanox based RoCE / Infiniband solution
-	else if ( strstr ( dname, "mlx" ) ) {
-		dldriver = dlopen("/usr/lib64/libmlx4-rdmav2.so", RTLD_NOW);
-		if (!dldriver) {
-			fprintf(stderr, "Warning: Couldn't load driver /usr/local/lib/%s\n",device);
-			exit(0);
-		}
-
-		real_mlx4_post_send = dlsym(dldriver,"mlx4_post_send");
-		real_mlx4_post_recv = dlsym(dldriver,"mlx4_post_recv");
-		real_mlx4_poll_cq   = dlsym(dldriver, "mlx4_poll_cq");
-		real_mlx4_arm_cq = dlsym(dldriver, "mlx4_arm_cq");
-		
-		printf("address of send=%p recv=%p poll=%p arm_cq=%p\n",real_mlx4_post_send,real_mlx4_post_recv,real_mlx4_poll_cq,real_mlx4_arm_cq);
-
-	}
+	else if ( strstr ( dname, "mlx" ) ) 
+		cmd_output = popen("whereis libmlx4-rdmav2" , "r");
+	
 	//If its a card that we havent taken care of yet
         //Send me an email if you are intersted in writing a wrapper to a particular vendor's verb implementation
 	else {
 		printf("Warning: Didnt find any recognizable RDMA devices\n");
 		return;
 	}
-
+	fgets(buffer, 1024, cmd_output);
+	getsymbols( getpath(buffer) );
 }
 
 
-void read_device_specific_symbols() {
+static void read_device_specific_symbols() {
 
 	char infini_path[] = "/sys/class/infiniband/";
 	struct dirent *curDir;
@@ -117,7 +156,6 @@ void read_device_specific_symbols() {
 
 	while ( (curDir = readdir(infinibandDir)) != NULL ) {
 		if ( strcmp(curDir -> d_name , ".")  && strcmp(curDir->d_name , ".." ) ) {
-			printf("dir is %s \n",curDir->d_name);
 			load_driver(curDir->d_name);	
 			n++;
 		}
@@ -130,7 +168,7 @@ void read_device_specific_symbols() {
 	}
 }
 
-void readibsymbol()
+static void readibsymbol()
 {
 	void *dlhandle;
 	dlhandle = dlopen("/usr/lib64/libibverbs.so"/*so_name*/, RTLD_NOW);
