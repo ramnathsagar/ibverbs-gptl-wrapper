@@ -1,5 +1,7 @@
+LIBNAME=ibverbs-wrapper
 LDFLAGS= -fpic -shared
 LIBS=
+MAKE=gcc
 
 ifeq ($(GPTL_SRC_PATH), )
      $(warning GPTL_SRC_PATH is not set.. Set GPTL_SRC_PATH to the source dir of GPTL.)
@@ -7,7 +9,6 @@ ifeq ($(GPTL_SRC_PATH), )
 endif
 
 include $(GPTL_SRC_PATH)/macros.make
-$(warning $(HAVE_PAPI))
 
 ifeq ($(HAVE_PAPI),yes)
   LIBS += $(PAPI_LIBFLAGS)
@@ -26,9 +27,10 @@ endif
 LIBS += -ldl -L/usr/local/lib -lgptl -L/usr/lib64 -libverbs
 
 all:
-	gcc $(LDFLAGS) $(INCL) $(LIBS) -o libibverbs-wrapper.so ibverbs_wrapper.c
+	$(MAKE) $(LDFLAGS) $(INCL) $(LIBS) -o lib$(LIBNAME).so ibverbs_wrapper.c
 install:
-	cp *.so /usr/lib64/
+	install -d $(INSTALLDIR)/lib
+	install -m 0644 lib$(LIBNAME).so $(INSTALLDIR)/lib
 clean:
 	rm -rf *.0
 distclean:
