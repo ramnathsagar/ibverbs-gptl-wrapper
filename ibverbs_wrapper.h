@@ -40,6 +40,8 @@
 #include <infiniband/verbs.h>
 //#include <rdma/rdma_verbs.h>
 
+static void readibsymbol();
+
 static struct ibv_device** (*real_ibv_get_device_list)(int *) = NULL;
 static const char* (*real_ibv_get_device_name)(struct ibv_device *) = NULL;
 static struct ibv_context* (*real_ibv_open_device)(struct ibv_device *) = NULL;
@@ -55,18 +57,6 @@ static int (*real_ibv_req_notity_cq)(struct ibv_cq *, int) = NULL;
 static struct ibv_qp* (*real_ibv_create_qp)(struct ibv_pd *, struct ibv_qp_init_attr *) = NULL;
 static int (*real_ibv_modify_qp)(struct ibv_qp *, struct ibv_qp_attr *, int) = NULL;
 static struct ibv_ah* (*real_ibv_create_ah)(struct ibv_pd *, struct ibv_ah_attr *) = NULL;
-
-
-static int (*real_ocrdma_post_send)(struct ibv_qp *, struct ibv_send_wr *, struct ibv_send_wr **) = NULL;
-static int (*real_ocrdma_post_recv)(struct ibv_qp *, struct ibv_recv_wr *, struct ibv_recv_wr **) = NULL;
-static int (*real_ocrdma_poll_cq)(struct ibv_cq *, int, struct ibv_wc *) = NULL;
-static int (*real_ocrdma_arm_cq)(struct ibv_cq *, int) = NULL;
-
-static int (*real_mlx4_post_send)(struct ibv_qp *, struct ibv_send_wr *, struct ibv_send_wr **) = NULL;
-static int (*real_mlx4_post_recv)(struct ibv_qp *, struct ibv_recv_wr *, struct ibv_recv_wr **) = NULL;
-static int (*real_mlx4_poll_cq)(struct ibv_cq *, int , struct ibv_wc *) = NULL;
-static int (*real_mlx4_arm_cq)(struct ibv_cq *, int/*enum ib_cq_notify_flags*/) = NULL;
-
 
 static int (*real_ibv_destroy_ah)(struct ibv_ah *) = NULL;
 static int (*real_ibv_destroy_qp)(struct ibv_qp *) = NULL;

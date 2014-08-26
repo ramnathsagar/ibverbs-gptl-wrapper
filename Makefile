@@ -27,7 +27,7 @@ endif
 LIBS += -ldl -L/usr/local/lib -lgptl -L/usr/lib64 -libverbs
 
 all:
-	$(MAKE) $(LDFLAGS) $(INCL) $(LIBS) -o lib$(LIBNAME).so ibverbs_wrapper.c
+	$(MAKE) $(LDFLAGS) $(INCL) $(LIBS) -o lib$(LIBNAME).so ibverbs_wrapper.c hwverbs_wrapper.c
 install:
 	install -d $(INSTALLDIR)/lib
 	install -m 0644 lib$(LIBNAME).so $(INSTALLDIR)/lib
