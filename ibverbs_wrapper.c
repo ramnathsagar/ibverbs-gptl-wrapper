@@ -24,14 +24,20 @@ Copyright (c) 2014 Ramnath Sai Sagar (ramnath.sagar@gmail.com)
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <string.h>
+
+#include <dirent.h>
 
 #include <dlfcn.h>
 
 #include <gptl.h>
-#include <papi.h>
+
+#ifdef HAVE_PAPI
+	#include <papi.h>
+#endif
 
 #include <infiniband/verbs.h>
-#include <rdma/rdma_verbs.h>
+//#include <rdma/rdma_verbs.h>
 
 
 static struct ibv_device** (*real_ibv_get_device_list)(int *) = NULL;
@@ -59,7 +65,7 @@ static int (*real_ocrdma_arm_cq)(struct ibv_cq *, int) = NULL;
 static int (*real_mlx4_post_send)(struct ibv_qp *, struct ibv_send_wr *, struct ibv_send_wr **) = NULL;
 static int (*real_mlx4_post_recv)(struct ibv_qp *, struct ibv_recv_wr *, struct ibv_recv_wr **) = NULL;
 static int (*real_mlx4_poll_cq)(struct ibv_cq *, int , struct ibv_wc *) = NULL;
-static int (*real_mlx4_ib_arm_cq)(struct ibv_cq *, int/*enum ib_cq_notify_flags*/) = NULL;
+static int (*real_mlx4_arm_cq)(struct ibv_cq *, int/*enum ib_cq_notify_flags*/) = NULL;
 
 
 static int (*real_ibv_destroy_ah)(struct ibv_ah *) = NULL;
@@ -77,9 +83,12 @@ static int check = 0;
 static void setoptions()
 {
 	int ret;
+#ifdef HAVE_PAPI
 	ret = GPTLsetoption (GPTL_IPC, 1);
 	ret = GPTLsetoption (PAPI_TOT_INS, 1);
 	ret = GPTLsetoption (PAPI_L2_DCM, 1);
+#endif
+
 	ret = GPTLsetoption (GPTLoverhead, 1);
 
 }
@@ -101,64 +110,15 @@ static void finalize_tracing()
 	//printf("Finalized\n");
 }
 
-char *finddevice()
-{
-	char line[128];
-	char *driver;
-	FILE *file;
-	long saveoffset;
-	driver = malloc(7*sizeof(char));
-	system("ibdev2netdev | grep mlx > tmp.file");
-	
-	file = fopen("tmp.file","r");
-	
-	if (file != NULL)
-	{
-		/*long*/ saveoffset = ftell(file);
-		fseek(file, 0, SEEK_END);
-	
-		if(ftell(file) != 0)
-			driver="mlx4";
-		else
-			driver="ocrdma";
-	
-		fclose(file);
-	}
-	else
-		perror("File not present\n");
-	
-	system("rm -rf tmp.file");
-	system("ibdev2netdev | grep ocrdma > tmp.file");
-	
-	file = fopen("tmp.file","r");
+void load_driver(char *dname) {
 
-	if ( file != NULL)
-	{
-		saveoffset = ftell(file);
-		fseek(file, 0, SEEK_END);
-
-		if (ftell(file) != 0 && (!strcmp(driver,"mlx4")))
-			driver="both";
-		//else
-			
-
-	}
-	system("rm -rf tmp.file");
-	return driver;
-}
-
-
-void load_driver()
-{
-	
 	void *dldriver;
 	char *device = malloc(7*sizeof(char));
 	char *so_name;
-	device=finddevice();
-	printf("The device found is %s\n",device);
-	if((!strcmp(device,"ocrdma")) || (!strcmp(device,"both")))
-	{
-		so_name = "/usr/lib64/libocrdma.so";
+
+	//If its a Emulex based RoCE solution
+	if ( strstr ( dname, "ocrdma" ) ) {
+		so_name = "/usr/local/lib/libocrdma.so";
 		dldriver = dlopen(so_name, RTLD_NOW);
 		//dldriver = dlopen("/usr/local/lib/libocrdma-rdmav2.so", RTLD_NOW);
 
@@ -173,10 +133,9 @@ void load_driver()
 		printf("address of send=%p recv=%p poll=%p arm_cq=%p\n",real_ocrdma_post_send,real_ocrdma_post_recv,real_ocrdma_poll_cq,real_ocrdma_arm_cq);
 
 	}
-	
-	if((!strcmp(device,"mlx4")) || (!strcmp(device,"both")))
-	{
-		dldriver = dlopen("/usr/local/lib/libmlx4-rdmav2.so", RTLD_NOW);
+	//If its a Mellanox based RoCE / Infiniband solution
+	else if ( strstr ( dname, "mlx" ) ) {
+		dldriver = dlopen("/usr/lib64/libmlx4-rdmav2.so", RTLD_NOW);
 		if (!dldriver) {
 			fprintf(stderr, "Warning: Couldn't load driver /usr/local/lib/%s\n",device);
 			exit(0);
@@ -185,9 +144,45 @@ void load_driver()
 		real_mlx4_post_send = dlsym(dldriver,"mlx4_post_send");
 		real_mlx4_post_recv = dlsym(dldriver,"mlx4_post_recv");
 		real_mlx4_poll_cq   = dlsym(dldriver, "mlx4_poll_cq");
-		real_mlx4_ib_arm_cq = dlsym(dldriver, "mlx4_ib_arm_cq");
+		real_mlx4_arm_cq = dlsym(dldriver, "mlx4_arm_cq");
+		
+		printf("address of send=%p recv=%p poll=%p arm_cq=%p\n",real_mlx4_post_send,real_mlx4_post_recv,real_mlx4_poll_cq,real_mlx4_arm_cq);
 
-	        printf("address of send=%p recv=%p poll=%p arm_cq=%p\n",real_mlx4_post_send,real_mlx4_post_recv,real_mlx4_poll_cq,real_mlx4_ib_arm_cq);
+	}
+	//If its a card that we havent taken care of yet
+        //Send me an email if you are intersted in writing a wrapper to a particular vendor's verb implementation
+	else {
+		printf("Warning: Didnt find any recognizable RDMA devices\n");
+		return;
+	}
+
+}
+
+
+void read_device_specific_symbols() {
+
+	char infini_path[] = "/sys/class/infiniband/";
+	struct dirent *curDir;
+	int n = 0;
+
+	DIR *infinibandDir = opendir(infini_path);
+	if ( infinibandDir == NULL ) {
+		printf("Are you sure RDMA modules are loaded? Will abort now..\n");
+		exit(0);
+	}
+
+	while ( (curDir = readdir(infinibandDir)) != NULL ) {
+		if ( strcmp(curDir -> d_name , ".")  && strcmp(curDir->d_name , ".." ) ) {
+			printf("dir is %s \n",curDir->d_name);
+			load_driver(curDir->d_name);	
+			n++;
+		}
+	}
+	if ( n == 0 ) {
+		printf("Looks like there is no RoCE / Infiniband / iWARP capable devices..\n");
+		printf("Are you sure device driver modules are loaded?");
+		printf("No use for me.. Will abort now!");
+		exit(0);
 	}
 }
 
@@ -227,8 +222,8 @@ void readibsymbol()
 	real_ibv_free_device_list = dlsym(dlhandle, "ibv_free_device_list");
 	real_ibv_close_device = dlsym(dlhandle, "ibv_close_device");
 
-	load_driver();
-
+	//load_driver();
+	read_device_specific_symbols();
 	//printf("%p , %p and %p\n",real_ocrdma_poll_cq,real_ibv_create_qp,real_ibv_modify_qp);
 }
 
@@ -575,13 +570,13 @@ int ocrdma_arm_cq(struct ibv_cq *ibcq, int solicited)
 
 }
 
-int mlx4_ib_arm_cq(struct ib_cq *ibcq, int/*enum ib_cq_notify_flags*/ flags)
+int mlx4_arm_cq(struct ibv_cq *ibcq, int/*enum ib_cq_notify_flags*/ flags)
 {
 	int retval;
 	
-	GPTLstart("mlx4_ib_arm_cq");
+	GPTLstart("mlx4_arm_cq");
 
-	retval = real_mlx4_ib_arm_cq(ibcq, /*ib_cq_notify_flags*/ flags);
+	retval = real_mlx4_arm_cq(ibcq, /*ib_cq_notify_flags*/ flags);
 
 	GPTLstop("mlx4_ib_arm_cq");
 
