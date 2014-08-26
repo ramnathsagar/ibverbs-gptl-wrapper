@@ -31,6 +31,8 @@ all:
 install:
 	install -d $(INSTALLDIR)/lib
 	install -m 0644 lib$(LIBNAME).so $(INSTALLDIR)/lib
+uninstall:
+	rm -rf $(INSTALLDIR)/lib/lib$(LIBNAME).so
 clean:
 	rm -rf *.0
 distclean:
