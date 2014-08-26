@@ -213,7 +213,7 @@ void readibsymbol()
 	real_ibv_create_ah = dlsym(dlhandle,"ibv_create_ah");
 	
 
-	//real_ibv_destroy_ah = dlsym(dlhandle,"ibv_destroy_ah");
+	real_ibv_destroy_ah = dlsym(dlhandle,"ibv_destroy_ah");
 	real_ibv_destroy_qp = dlsym(dlhandle,"ibv_destroy_qp");
 	real_ibv_dereg_mr = dlsym(dlhandle,"ibv_dereg_mr");
 	real_ibv_destroy_cq = dlsym(dlhandle,"ibv_destroy_cq");
@@ -222,8 +222,7 @@ void readibsymbol()
 	real_ibv_free_device_list = dlsym(dlhandle, "ibv_free_device_list");
 	real_ibv_close_device = dlsym(dlhandle, "ibv_close_device");
 
-	//load_driver();
-	read_device_specific_symbols();
+	//read_device_specific_symbols();
 	//printf("%p , %p and %p\n",real_ocrdma_poll_cq,real_ibv_create_qp,real_ibv_modify_qp);
 }
 
@@ -233,17 +232,16 @@ struct ibv_device **ibv_get_device_list(int *num_devices)
 		
 	if (check == 0) {
 		readibsymbol();
-		//setoptions();
+		read_device_specific_symbols();
+		setoptions();
 		initialize_tracing();
 		check = 1;
 	}
 
-	//printf("get_device_list\n");
 	GPTLstart("ibv_get_device_list");
 
 	retval = real_ibv_get_device_list(num_devices);
 
-	//printf("1get_device_list\n");
 	GPTLstop("ibv_get_device_list");
 
 	return retval;
@@ -253,13 +251,11 @@ const char *ibv_get_device_name(struct ibv_device *device)
 {
 	const char* retval;
 
-	//printf("get_device_name\n");
 	GPTLstart("ibv_get_device_name");
 
 	retval = real_ibv_get_device_name(device);
 
 	GPTLstop("ibv_get_device_name");
-	//printf("1get_device_name\n");
 
 	return retval;
 
@@ -269,13 +265,11 @@ struct ibv_context *ibv_open_device(struct ibv_device *device)
 {
 	struct ibv_context* retval;
 	
-	//printf("ibv_open_device\n");
 	GPTLstart("ibv_open_device");
 
 	retval = real_ibv_open_device(device);
 
 	GPTLstop("ibv_open_device");
-	//printf("1ibv_open_device\n");
 
 	return retval;
 
@@ -285,15 +279,13 @@ int ibv_query_device(struct ibv_context *context, struct ibv_device_attr *device
 {
 	int retval;
 
-	//printf("ibv_query_device\n");
 	GPTLstart("ibv_query_device");
 
 	retval = real_ibv_query_device(context, device_attr);
 
 	GPTLstop("ibv_query_device");
-	//printf("1ibv_query_device\n");
 
-return retval;
+	return retval;
 
 }
 
@@ -301,13 +293,11 @@ int ibv_query_gid(struct ibv_context *context, uint8_t port_num, int index, unio
 {
 	int retval;
 
-	//printf("ibv_query_gid\n");
 	GPTLstart("ibv_query_gid");
 
 	retval = real_ibv_query_gid(context, port_num, index, gid);
 
 	GPTLstop("ibv_query_gid");
-	//printf("1ibv_query_gid\n");
 
 	return retval;
 
@@ -333,13 +323,11 @@ struct ibv_pd *ibv_alloc_pd(struct ibv_context *context)
 {
 	struct ibv_pd* retval;
 
-	//printf("ibv_alloc_pd\n");
 	GPTLstart("ibv_alloc_pd");
 
 	retval = real_ibv_alloc_pd(context);
 
 	GPTLstop("ibv_alloc_pd");
-	//printf("1ibv_alloc_pd\n");
 
 	return retval;
 
@@ -349,13 +337,11 @@ struct ibv_mr *ibv_reg_mr(struct ibv_pd *pd, void *addr, size_t length, int acce
 {
 	struct ibv_mr* retval;
 	
-	//printf("ibv_reg_mr\n");
 	GPTLstart("ibv_reg_mr");
 
 	retval = real_ibv_reg_mr(pd, addr, length, access);
 
 	GPTLstop("ibv_reg_mr");
-	//printf("1ibv_reg_mr\n");
 
 	return retval;
 
@@ -365,13 +351,11 @@ struct ibv_cq *ibv_create_cq(struct ibv_context *context, int cqe, void *cq_cont
 {
 	struct ibv_cq* retval;
 	
-	//printf("ibv_create_cq\n");
 	GPTLstart("ibv_create_cq");
 
 	retval = real_ibv_create_cq(context, cqe, cq_context, channel, comp_vector);
 
 	GPTLstop("ibv_create_cq");
-	//printf("ibv_create_cq\n");
 
 	return retval;
 
@@ -381,61 +365,26 @@ int ibv_get_cq_event(struct ibv_comp_channel *channel, struct ibv_cq **cq, void 
 {
 	int retval;
 
-	//printf("ibv_get_cq_event\n");
 	GPTLstart("ibv_get_cq_event");
 
 	retval = real_ibv_get_cq_event(channel, cq, cq_context);
 
 	GPTLstop("ibv_get_cq_event");
-	//printf("ibv_get_cq_event\n");
 
 	return retval;
 
 }
 
-/*int ibv_req_notify_cq(struct ibv_cq *cq, int solicited_only)
-{
-	int retval;
-
-	printf("ibv_req_notify_cq\n");
-	GPTLstart("ibv_req_notity_cq");
-
-	retval = real_ibv_req_notity_cq(cq, solicited_only);
-
-	GPTLstop("ibv_req_notity_cq");
-	printf("1ibv_req_notify_cq\n");
-
-	return retval;
-
-}*/
-
-
-/*void ibv_free_device_list(struct ibv_device **list)
-{
-	GPTLstart("ibv_free_device_list");
-	printf("ibv_free_device_list\n");
-	
-	real_ibv_free_device_list(list);
-
-	printf("1ibv_free_device_list\n");
-	GPTLstop("ibv_free_device_list");
-
-	if (check == 1) {
-		finalize_tracing();
-		check = 0;
-	}
-}*/
-
 struct ibv_qp *ibv_create_qp(struct ibv_pd *pd, struct ibv_qp_init_attr *qp_init_attr)
 {
 	struct ibv_qp* retval;
-	//printf("In create_qp\n");
+	
 	GPTLstart("ibv_create_qp");
 
 	retval = real_ibv_create_qp(pd, qp_init_attr);
 
 	GPTLstop("ibv_create_qp");
-	//printf("leaving create_qp\n");
+	
 	return retval;
 
 }
@@ -444,13 +393,11 @@ int ibv_modify_qp(struct ibv_qp *qp, struct ibv_qp_attr *attr, int attr_mask)
 {
 	int retval;
 	
-	//printf("In modify qp");
 	GPTLstart("ibv_modify_qp");
 	
 	retval = real_ibv_modify_qp(qp, attr, attr_mask);
 
 	GPTLstop("ibv_modify_qp");
-	//printf("In modify qp");
 
 	return retval;
 
@@ -459,13 +406,11 @@ int ibv_modify_qp(struct ibv_qp *qp, struct ibv_qp_attr *attr, int attr_mask)
 struct ibv_ah *ibv_create_ah(struct ibv_pd *pd, struct ibv_ah_attr *attr)
 {
 	struct ibv_ah* retval;
-	//printf("ibv_create_ah\n");
 	GPTLstart("ibv_create_ah");
 
 	retval = real_ibv_create_ah(pd, attr);
 
 	GPTLstop("ibv_create_ah");
-	//printf("1ibv_create_ah\n");
 
 	return retval;
 
@@ -503,13 +448,11 @@ int mlx4_post_recv(struct ibv_qp *qp, struct ibv_recv_wr *wr, struct ibv_recv_wr
 {
 	int retval;
 
-	//printf("ibv_post_recv\n");
 	GPTLstart("mlx4_post_recv");
 
 	retval = real_mlx4_post_recv(qp, wr, bad_wr);
 
 	GPTLstop("mlx4_post_recv");
-	//printf("1ibv_post_recv\n");
 
 return retval;
 
@@ -519,13 +462,11 @@ int ocrdma_post_recv(struct ibv_qp *qp, struct ibv_recv_wr *wr, struct ibv_recv_
 {
 	int retval;
 
-	//printf("ibv_post_recv\n");
 	GPTLstart("ocrdma_post_recv");
 
 	retval = real_ocrdma_post_recv(qp, wr, bad_wr);
 
 	GPTLstop("ocrdma_post_recv");
-	//printf("1ibv_post_recv\n");
 
 	return retval;
 
@@ -534,10 +475,11 @@ int ocrdma_post_recv(struct ibv_qp *qp, struct ibv_recv_wr *wr, struct ibv_recv_
 int mlx4_poll_cq(struct ibv_cq *cq, int num_entries, struct ibv_wc *wc)
 {
 	int retval;
-	//printf("Inside poll_cq\n");
+	
 	GPTLstart("mlx4_poll_cq");
 
 	retval = real_mlx4_poll_cq (cq, num_entries, wc);
+	
 	GPTLstop("mlx4_poll_cq");
 
 	return retval;
@@ -547,7 +489,7 @@ int mlx4_poll_cq(struct ibv_cq *cq, int num_entries, struct ibv_wc *wc)
 int ocrdma_poll_cq(struct ibv_cq *cq, int num_entries, struct ibv_wc *wc)
 {
 	int retval;
-	//printf("Inside poll_cq\n");
+	
 	GPTLstart("ocrdma_poll_cq");
 
 	retval = real_ocrdma_poll_cq (cq, num_entries, wc);
@@ -560,6 +502,7 @@ int ocrdma_poll_cq(struct ibv_cq *cq, int num_entries, struct ibv_wc *wc)
 int ocrdma_arm_cq(struct ibv_cq *ibcq, int solicited)
 {
 	int retval;
+	
 	GPTLstart("ocrdma_arm_cq");
 
 	retval = real_ocrdma_arm_cq(ibcq, solicited);
@@ -587,13 +530,11 @@ int ibv_destroy_ah(struct ibv_ah *ah)
 {
 	int retval;
 
-	//printf("ibv_destroy_ah\n");
 	GPTLstart("ibv_destroy_ah");
 
 	retval = real_ibv_destroy_ah(ah);
 
 	GPTLstop("ibv_destroy_ah");
-	//printf("ibv_destroy_ah\n");
 
 	return retval;
 }
@@ -602,13 +543,11 @@ int ibv_destroy_qp(struct ibv_qp *qp)
 {
 	int retval;
 
-	//printf("ibv_destroy_qp\n");
 	GPTLstart("ibv_destroy_qp");
 
 	retval = real_ibv_destroy_qp(qp);
 
 	GPTLstop("ibv_destroy_qp");
-	//printf("1ibv_destroy_qp\n");
 
 	return retval;
 
@@ -619,13 +558,11 @@ int ibv_dereg_mr(struct ibv_mr *mr)
 
 	int retval;
 
-	//printf("ibv_dereg_mr\n");
 	GPTLstart("ibv_dereg_mr");
 
 	retval = real_ibv_dereg_mr(mr);
 
 	GPTLstop("ibv_dereg_mr");
-	//printf("1ibv_dereg_mr\n");
 
 	return retval;
 
@@ -635,13 +572,11 @@ int ibv_destroy_cq(struct ibv_cq *cq)
 {
 	int retval;
 
-	//printf("ibv_destroy_cq\n");
 	GPTLstart("ibv_destroy_cq");
 
 	retval = real_ibv_destroy_cq(cq);
 
 	GPTLstop("ibv_destroy_cq");
-	//printf("1ibv_destroy_cq\n");
 
 	return retval;
 
@@ -651,21 +586,12 @@ int ibv_dealloc_pd(struct ibv_pd *pd)
 {
 	int retval;
 
-	//printf(" S72 : ibv_dealloc_pd START\n");
 	GPTLstart("ibv_dealloc_pd");
 
 	retval = real_ibv_dealloc_pd(pd);
 
 	GPTLstop("ibv_dealloc_pd");
 
-
-	/*if (check == 1) {
-		finalize_tracing();
-		check = 0;
-	}*/
-
-
-	//printf("S72: ibv_dealloc_pd STOP\n");
 	return retval;
 
 }
@@ -674,17 +600,11 @@ int ibv_dealloc_pd(struct ibv_pd *pd)
 void ibv_free_device_list(struct ibv_device **list)
 {
 	GPTLstart("ibv_free_device_list");
-	//printf("ibv_free_device_list\n");
 
 	real_ibv_free_device_list(list);
 
-	//printf("1ibv_free_device_list\n");
 	GPTLstop("ibv_free_device_list");
 
-/*if (check == 1) {
-finalize_tracing();
-check = 0;
-}*/
 }
 
 
@@ -692,13 +612,10 @@ int ibv_close_device(struct ibv_context *context)
 {
 	int retval;
 	
-	//printf(" S72 : ibv_close_device START\n");
 	GPTLstart("ibv_close_device");
-
 
 	retval = real_ibv_close_device(context);
 
-	//printf("1ibv_close_device\n");
 	GPTLstop("ibv_close_device");
 
 	if (check == 1) {
@@ -706,7 +623,6 @@ int ibv_close_device(struct ibv_context *context)
 		check = 0;
 	}
 
-	//printf(" S72 : ibv_close_device STOP\n");
 	return retval;
 }
 	
