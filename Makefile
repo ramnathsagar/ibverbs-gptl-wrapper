@@ -23,8 +23,13 @@ ifeq ($(HAVE_LIBRT),yes)
  LIBS += -lrt
 endif
 
-LIBS += /usr/local/lib/libgptl.a
 LIBS += -ldl -L/usr/local/lib -lgptl -L/usr/lib64 -libverbs
 
 all:
 	gcc $(LDFLAGS) $(INCL) $(LIBS) -o libibverbs-wrapper.so ibverbs_wrapper.c
+install:
+	cp *.so /usr/lib64/
+clean:
+	rm -rf *.0
+distclean:
+	rm -rf *.0 *.so
