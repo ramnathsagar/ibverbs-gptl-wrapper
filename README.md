@@ -4,7 +4,6 @@ ibverbs-gptl-wrapper
 Wrapper for ibverbs to do automatic instrumentation using GPTL performance library
 
 
-
 This is a wrapper to ibverbs library.
 
 This is helpful in automatic instrumentation fo ibverbs library using GPTL.
