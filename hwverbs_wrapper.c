@@ -58,8 +58,20 @@ static void  getsymbols(char *so_name) {
 
 		fprintf(stdout, "address of send=%p recv=%p poll=%p arm_cq=%p\n",real_ocrdma_post_send,real_ocrdma_post_recv,real_ocrdma_poll_cq,real_ocrdma_arm_cq);
 	}
+	else if(strstr ( so_name, "libcxgb3-rdmav2")) {
+		real_iwch_post_send = dlsym(dldriver,"iwch_post_send");
+		real_iwch_post_receive = dlsym(dldriver,"iwch_post_receive");
+		real_iwch_poll_cq = dlsym(dldriver,"iwch_poll_cq");
+		real_iwch_arm_cq = dlsym(dldriver,"iwch_arm_cq");
+	}
+	else if (strstr ( so_name, "libcxgb4-rdmav2")) {
+		real_c4iw_post_send = dlsym(dldriver,"c4iw_post_send");
+		real_c4iw_post_receive = dlsym(dldriver,"c4iw_post_receive");
+		real_c4iw_poll_cq = dlsym(dldriver,"c4iw_poll_cq");
+		real_c4iw_arm_cq = dlsym(dldriver,"c4iw_arm_cq");
+	}
 	else {
-		//Do nothing..
+		//Do nothing...
 	}
 }
 
@@ -122,7 +134,12 @@ static void load_driver(char *dname) {
 	//If its a Mellanox based RoCE / Infiniband solution
 	else if ( strstr ( dname, "mlx" ) ) 
 		cmd_output = popen("whereis libmlx4-rdmav2" , "r");
-	
+	//If its a Chelsio CXGB3 based iWARP solution
+	else if ( strstr ( dname, "cxgb3") )
+		cmd_output = popen("whereis libcxgb3-rdmav2.so", "r");
+	//If its a Chelsio CXGB4 based iWARP solution
+	else if (strstr ( dname, "cxgb4") )
+		cmd_output = popen("whereis libcxgb4-rdmav2.so","r");
 	//If its a card that we havent taken care of yet
         //Send me an email if you are intersted in writing a wrapper to a particular vendor's verb implementation
 	else {
@@ -290,11 +307,140 @@ int mlx4_arm_cq(struct ibv_cq *ibcq, int/*enum ib_cq_notify_flags*/ flags)
 
 	retval = real_mlx4_arm_cq(ibcq, /*ib_cq_notify_flags*/ flags);
 
-	GPTLstop("mlx4_ib_arm_cq");
+	GPTLstop("mlx4_arm_cq");
 
 	return retval;
 
 }
+
+/************************************************************************************
+
+									CXGB3
+
+*************************************************************************************/
+int iwch_post_send(struct ibv_qp *qp, struct ibv_send_wr *wr, struct ibv_send_wr **bad_wr)
+{
+	int retval;
+
+	GPTLstart("iwch_post_send");
+
+	retval = real_iwch_post_send(qp, wr, bad_wr);
+	
+	GPTLstop("iwch_post_send");
+
+	return retval;
+}
+
+int iwch_post_receive(struct ibv_qp *qp, struct ibv_recv_wr *wr, struct ibv_recv_wr **bad_wr)
+{
+	int retval;
+
+	GPTLstart("iwch_post_recv");
+
+	retval = real_iwch_post_receive(qp, wr, bad_wr);
+
+	GPTLstop("iwch_post_recv");
+
+	return retval;
+
+}
+
+
+int iwch_poll_cq(struct ibv_cq *cq, int num_entries, struct ibv_wc *wc)
+{
+	int retval;
+
+	GPTLstart("iwch_poll_cq");
+
+	retval = real_iwch_poll_cq (cq, num_entries, wc);
+
+	GPTLstop("iwch_poll_cq");
+
+	return retval;
+
+}
+
+
+
+int iwch_arm_cq(struct ibv_cq *ibcq, int flags)
+{
+
+	int retval;
+
+	GPTLstart("iwch_arm_cq");
+
+	retval = real_iwch_arm_cq(ibcq, /*ib_cq_notify_flags*/ flags);
+
+	GPTLstop("iwch_arm_cq");
+
+	return retval;
+
+}
+
+/************************************************************************************
+
+								CXGB4
+
+*************************************************************************************/
+int c4iw_post_send(struct ibv_qp *qp, struct ibv_send_wr *wr, struct ibv_send_wr **bad_wr)
+{
+
+	int retval;
+	
+	GPTLstart("c4iw_post_send");
+
+	retval = real_c4iw_post_send(qp, wr, bad_wr);
+
+	GPTLstop("c4iw_post_send");
+
+	return retval;
+}
+
+int c4iw_post_receive(struct ibv_qp *qp, struct ibv_recv_wr *wr, struct ibv_recv_wr **bad_wr)
+{
+
+	int retval;
+
+	GPTLstart("c4iw_post_recv");
+
+	retval = real_c4iw_post_receive(qp, wr, bad_wr);
+
+	GPTLstop("c4iw_post_recv");
+
+	return retval;
+
+}
+
+
+int c4iw_poll_cq(struct ibv_cq *cq, int num_entries, struct ibv_wc *wc)
+{
+	int retval;
+
+	GPTLstart("c4iw_poll_cq");
+
+	retval = real_c4iw_poll_cq (cq, num_entries, wc);
+
+	GPTLstop("c4iw_poll_cq");
+
+	return retval;
+
+}
+
+int c4iw_arm_cq(struct ibv_cq *ibcq, int flags)
+{
+
+	int retval;
+
+	GPTLstart("c4iwh_arm_cq");
+
+	retval = real_c4iw_arm_cq(ibcq, /*ib_cq_notify_flags*/ flags);
+
+	GPTLstop("c4iw_arm_cq");
+
+	return retval;
+
+}
+
 
 /************************************************************************************
 

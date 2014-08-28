@@ -38,6 +38,7 @@
 #endif
 
 #include <infiniband/verbs.h>
+#include <rdma/ib_verbs.h>
 
 static void  getsymbols(char *so_name);
 static char *getpath(char *buffer);
@@ -55,6 +56,21 @@ static int (*real_mlx4_post_send)(struct ibv_qp *, struct ibv_send_wr *, struct 
 static int (*real_mlx4_post_recv)(struct ibv_qp *, struct ibv_recv_wr *, struct ibv_recv_wr **) = NULL;
 static int (*real_mlx4_poll_cq)(struct ibv_cq *, int , struct ibv_wc *) = NULL;
 static int (*real_mlx4_arm_cq)(struct ibv_cq *, int/*enum ib_cq_notify_flags*/) = NULL;
+
+
+//CXGB3
+
+static int (*real_iwch_post_send)(struct ibv_qp *, struct ibv_send_wr *, struct ibv_send_wr **) = NULL;
+static int (*real_iwch_post_receive)(struct ibv_qp *, struct ibv_recv_wr *, struct ibv_recv_wr **) = NULL;
+static int (*real_iwch_poll_cq)(struct ibv_cq *, int , struct ibv_wc *) = NULL;
+static int (*real_iwch_arm_cq)(struct ibv_cq *, int /*enum ib_cq_notify_flags*/) = NULL;
+
+//CXGB4
+static int(*real_c4iw_post_send)(struct ibv_qp *, struct ibv_send_wr *, struct ibv_send_wr **) = NULL;
+static int(*real_c4iw_post_receive)(struct ibv_qp *, struct ibv_recv_wr *, struct ibv_recv_wr **) = NULL;
+static int(*real_c4iw_poll_cq)(struct ibv_cq *, int , struct ibv_wc *) = NULL;
+static int(*real_c4iw_arm_cq)(struct ibv_cq *, int /*enum ib_cq_notify_flags*/) = NULL;
+
 
 //.......
 

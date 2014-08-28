@@ -38,7 +38,7 @@
 #endif
 
 #include <infiniband/verbs.h>
-//#include <rdma/rdma_verbs.h>
+#include <rdma/ib_verbs.h>
 
 static void readibsymbol();
 
